@@ -8,20 +8,26 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.Map;
-
+import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.espacogeek.geek.data.MediaDataController;
+import com.espacogeek.geek.data.api.MediaApi;
 import com.espacogeek.geek.models.ExternalReferenceModel;
 import com.espacogeek.geek.models.MediaModel;
 import com.espacogeek.geek.models.TypeReferenceModel;
 import com.espacogeek.geek.repositories.MediaRepository;
+import com.espacogeek.geek.repositories.MediaRepositoryCustom;
 import com.espacogeek.geek.services.MediaCategoryService;
 import com.espacogeek.geek.services.MediaService;
+import com.espacogeek.geek.services.TypeReferenceService;
+import com.espacogeek.geek.utils.Utils;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.transaction.Transactional;
@@ -37,6 +43,19 @@ public class MediaServiceImpl implements MediaService {
 
     @Autowired
     private MediaCategoryService mediaCategoryService;
+
+    @Autowired @Qualifier("serieController")
+    private MediaDataController serieController;
+
+    @Autowired @Qualifier("genericMediaDataController")
+    private MediaDataController genericMediaDataController;
+
+    @Autowired
+    private MediaApi gamesAndVNsAPI;
+
+    @Autowired
+    private TypeReferenceService typeReferenceService;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MediaServiceImpl.class);
 
     /**
      * @see MediaService#save(MediaModel)
@@ -169,16 +188,59 @@ public class MediaServiceImpl implements MediaService {
      * @see MediaService#randomArtwork()
      */
     @Override
-    @SuppressWarnings("unchecked")
     public Optional<String> randomArtwork() {
-        var total = this.mediaRepository.count();
-        Optional<MediaModel> media = Optional.of(new MediaModel());
-        while (media.isPresent() && (media.get().getBanner() == null || "".equals(media.get().getBanner()))) {
-            var random = ThreadLocalRandom.current().nextInt(1, (int) total + 1);
-            media = this.mediaRepository.findById(random);
+        long total = mediaRepository.count();
+        if (total <= 0) return Optional.empty();
+
+        int maxAttempts = (int) Math.min(total + 10, 200); // safety cap
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            int randomIndex = ThreadLocalRandom.current().nextInt((int) total);
+            var page = mediaRepository.findAll(PageRequest.of(randomIndex, 1));
+            if (page.isEmpty()) continue;
+
+            MediaModel media = (MediaModel) page.getContent().getFirst();
+            if (media == null) continue;
+
+            if (media.getBanner() != null && !media.getBanner().isEmpty()) {
+                return Optional.of(media.getBanner());
+            }
+
+            try {
+                // Try to fetch/update artworks for this media
+                Integer categoryId = media.getMediaCategory() != null ? media.getMediaCategory().getId() : null;
+                if (categoryId == null) continue;
+
+                MediaModel updated = media;
+                switch (categoryId) {
+                    case MediaDataController.GAME_ID:
+                    case MediaDataController.VN_ID:
+                        updated = Utils
+                            .updateGenericMedia(
+                                Arrays.asList(media),
+                                genericMediaDataController,
+                                typeReferenceService.findById(MediaDataController.IGDB_ID).orElseThrow(),
+                                gamesAndVNsAPI
+                            )
+                            .getFirst();
+                        break;
+                    case MediaDataController.SERIE_ID:
+                        updated = Utils.updateMedia(Arrays.asList(media), serieController).getFirst();
+                        break;
+                    default:
+                        // Unsupported category for artwork update in this flow, skip
+                        break;
+                }
+
+                if (updated != null && updated.getBanner() != null && !updated.getBanner().isEmpty()) {
+                    return Optional.of(updated.getBanner());
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to update artwork for media id={}: {}", media.getId(), ex.getMessage());
+                // continue to next attempt
+            }
         }
-        String artwork = media.get().getBanner();
-        return Optional.ofNullable(artwork);
+
+        return Optional.empty();
     }
 
     @Override

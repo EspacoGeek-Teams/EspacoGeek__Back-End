@@ -1,24 +1,15 @@
 package com.espacogeek.geek.controllers;
 
-import java.io.IOException;
-import java.text.MessageFormat;
 import java.util.Arrays;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
 import com.espacogeek.geek.data.MediaDataController;
 import com.espacogeek.geek.data.api.MediaApi;
-import com.espacogeek.geek.data.impl.GenericMediaDataControllerImpl;
+import com.espacogeek.geek.data.api.QuoteApi;
 import com.espacogeek.geek.models.MediaModel;
 import com.espacogeek.geek.services.MediaCategoryService;
 import com.espacogeek.geek.services.MediaService;
@@ -29,10 +20,6 @@ import com.espacogeek.geek.utils.Utils;
 import com.espacogeek.geek.exception.GenericException;
 
 import graphql.schema.DataFetchingEnvironment;
-import jakarta.annotation.PostConstruct;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 @Controller
 public class MediaController {
@@ -48,42 +35,16 @@ public class MediaController {
     private TypeReferenceService typeReferenceService;
     @Autowired
     private MediaCategoryService mediaCategoryService;
+    @Autowired
+    private QuoteApi quoteApi;
 
     @QueryMapping(name = "quote")
     public QuoteArtwork getQuoteAndRandomArtwork() {
-        var client = new OkHttpClient().newBuilder().build();
-        Request request = null;
-        try {
-            request = new Request.Builder()
-                    .url("https://api.api-ninjas.com/v1/quotes")
-                    .method("GET", null)
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("X-Api-Key", "")
-                    .build();
-        } catch (Exception e) {
-            throw new GenericException("Quote not found");
-        }
+        var quote = quoteApi.getRandomQuote();
+        //String artwork = mediaService.randomArtwork().orElseThrow(() -> new GenericException("Artwork not found"));
 
-        Response response = null;
-        try {
-            response = client.newCall(request).execute();
-        } catch (IOException e) {
-            throw new GenericException("Quote not found");
-        }
-
-        var parser = new JSONParser();
-        var jsonArray = new JSONArray();
-        try {
-            jsonArray = (JSONArray) parser.parse(response.body().string());
-        } catch (ParseException | IOException e) {
-            throw new GenericException("Quote not found");
-        }
-
-        var jsonObject = (JSONObject) jsonArray.getFirst();
-
-        String artwork = mediaService.randomArtwork().orElseThrow(() -> new GenericException("Artwork not found"));
-
-        return new QuoteArtwork(jsonObject.get("quote").toString(), jsonObject.get("author").toString(), artwork);
+        //return new QuoteArtwork(quote.getQuote(), quote.getAuthor(), artwork);
+        return new QuoteArtwork(quote.getQuote(), quote.getAuthor(), "artwork");
     }
 
     /**
@@ -129,7 +90,8 @@ public class MediaController {
             return response;
         }
 
-        var medias = this.mediaService.findSerieByIdOrName(id, name, Utils.getRequestedFields(dataFetchingEnvironment), Utils.getPageable(dataFetchingEnvironment));
+        // var medias = this.mediaService.findSerieByIdOrName(id, name, Utils.getRequestedFields(dataFetchingEnvironment), Utils.getPageable(dataFetchingEnvironment));
+        var medias = this.mediaService.findSerieByIdOrName(id, name, Utils.getPageable(dataFetchingEnvironment));
         response.setTotalPages(medias.getTotalPages());
         response.setTotalElements(medias.getTotalElements());
         response.setNumber(medias.getNumber());

@@ -105,8 +105,7 @@ public class SerieControllerImpl extends GenericMediaDataControllerImpl {
                                 referenceListSaved.add(referenceSaved);
                                 mediaSaved.setExternalReference(referenceListSaved);
 
-                                media.setAlternativeTitles(
-                                        updateAlternativeTitles(mediaSaved, null, typeReference, tvSeriesApi));
+                                media.setAlternativeTitles(updateAlternativeTitles(mediaSaved, null, typeReference, tvSeriesApi));
                             }
                         }
                     } catch (Exception e) {

@@ -1,0 +1,5 @@
+type QuoteArtwork {
+    quote: String
+    author: String
+    urlArtwork: String
+}

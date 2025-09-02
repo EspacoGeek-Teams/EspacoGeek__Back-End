@@ -19,6 +19,7 @@ public interface MediaApi {
     public final static Integer IGDB_CLIENT_ID = 2;
     public final static Integer IGDB_TOKEN = 3;
     public final static Integer IGDB_CLIENT_SECRET = 4;
+    public final static Integer NINJA_QUOTE_API_KEY = 5;
 
     default public JSONArray updateTitles() {
         throw new UnsupportedOperationException();

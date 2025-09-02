@@ -3,3 +3,9 @@ type User {
     username: String
     email: String
 }
+
+input NewUser {
+  username: String!
+  email: String!
+  password: String!
+}

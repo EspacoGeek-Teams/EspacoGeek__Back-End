@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.context.annotation.Lazy;
 
 import com.espacogeek.geek.data.MediaDataController;
 import com.espacogeek.geek.data.api.MediaApi;
@@ -40,7 +41,7 @@ import jakarta.persistence.OneToMany;
 @Qualifier("genericMediaDataController")
 public class GenericMediaDataControllerImpl implements MediaDataController {
 
-    @Autowired
+    @Autowired @Lazy
     protected MediaService mediaService;
     @Autowired
     private GenreService genreService;

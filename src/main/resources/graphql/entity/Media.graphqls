@@ -25,9 +25,3 @@ type MediaPage {
     number: Int
     size: Int
 }
-
-type QuoteArtwork {
-    quote: String
-    author: String
-    urlArtwork: String
-}

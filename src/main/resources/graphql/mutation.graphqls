@@ -1,0 +1,7 @@
+type Mutation {
+    editPassword(actualPassword: String, newPassword: String): String
+    deleteUser(password: String): String
+    createUser(credentials: NewUser): String
+    editUsername(password: String, newUsername: String): String
+    editEmail(password: String, newEmail: String): String
+}
